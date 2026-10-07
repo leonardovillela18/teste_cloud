@@ -1,0 +1,36 @@
+services:
+  # Serviço 1: a API FastAPI (construída a partir do Dockerfile desta pasta)
+  api:
+    build: .
+    image: newtonsbm/api-cantina:latest
+    ports:
+      - "8000:8000"
+    environment:
+      # Atenção: o host é "db", o NOME do serviço do banco abaixo.
+      # Dentro da rede do Compose, não existe "localhost" entre containers!
+      - DATABASE_URL=postgresql://cantina:segredo123@db:5432/cantina
+    volumes:
+      # Monta o código local dentro do container: editar -> API recarrega sozinha
+      - .:/app
+    depends_on:
+      db:
+        condition: service_healthy  # só sobe depois do banco ficar pronto
+
+  # Serviço 2: o banco de dados PostgreSQL
+  db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=cantina
+      - POSTGRES_PASSWORD=segredo123
+      - POSTGRES_DB=cantina
+    volumes:
+      - db_data:/var/lib/postgresql/data  # dados persistem entre execuções
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cantina -d cantina"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+
+volumes:
+  db_data:
